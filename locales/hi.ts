@@ -142,6 +142,8 @@ export const hi: TranslationKeys = {
     // Quick Actions
     viewRecentPrices: "हाल की कीमतें देखें",
     findNearbyMarkets: "आस-पास के बाजार खोजें",
+
+    contactUs: "संपर्क करें: ",
   },
 
   // Map Screen

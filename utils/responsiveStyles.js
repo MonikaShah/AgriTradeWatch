@@ -96,6 +96,35 @@ export const createHomeStyles = createOrientationStyles(
       fontWeight: "700",
       color: "#2E7D32",
     },
+    userContact: {
+      marginTop: 6,
+      gap: 2,
+    },
+    userContactText: {
+      fontSize: 14,
+      color: "#666",
+    },
+    homeFooter: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingTop: 24,
+      paddingBottom: 32,
+      gap: 4,
+    },
+    homeFooterText: {
+      fontSize: 13,
+      color: "#666",
+      textAlign: "center",
+    },
+    homeFooterLink: {
+      fontSize: 13,
+      color: "#2E7D32",
+      fontWeight: "600",
+      textDecorationLine: "underline",
+    },
     welcomeCard: {
       borderRadius: 24,
       overflow: "hidden",

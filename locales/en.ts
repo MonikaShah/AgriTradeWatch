@@ -140,6 +140,8 @@ export const en = {
     // Quick Actions
     viewRecentPrices: "View Recent Prices",
     findNearbyMarkets: "Find Nearby Markets",
+
+    contactUs: "Contact us: ",
   },
 
   // Map Screen

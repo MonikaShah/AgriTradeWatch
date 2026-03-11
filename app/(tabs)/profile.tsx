@@ -18,6 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 // Local Imports
 import { useGlobal } from "@/context/global-provider";
 import { authService, profileService } from "@/services";
+import type { User } from "@/services/auth-service";
 import { USER_TYPES, LOCATION_OPTIONS, LANGUAGES } from "@/constants/authConstants";
 import { createProfileStyles } from "@/utils/responsiveStyles";
 import { useOrientation } from "@/utils/orientationUtils";
@@ -38,7 +39,7 @@ interface ProfileHeaderProps {
   user: ProfileData;
   styles: any;
   /** Role to show (e.g. from auth); overrides user.role so retailer is correct when API returns consumer */
-  displayRole?: string;
+  displayRole?: string | undefined;
 }
 interface ProfileFieldProps { field: { label: string; value: string | null; icon: string }; styles: any; }
 interface PreferenceFieldProps { field: { label: string; value: string; icon: string; onPress: () => void; editable: boolean }; styles: any; }
@@ -69,7 +70,7 @@ const useUserData = () => {
       const profileData = await profileService.getProfile();
       setUser(profileData);
       // Update the global context with fresh profile data
-      updateUserProfile(profileData);
+      updateUserProfile({ ...profileData, job: (profileData.job ?? "consumer") as User["job"] });
     } catch (err: any) {
       console.error('Error fetching profile:', err);
       Alert.alert('Error', 'Failed to load profile data. Please try again.');
@@ -108,22 +109,24 @@ const useUserPreferences = (user: ProfileData | null) => {
 // Memoized UI Components (Restored)
 // ========================================================================
 
-const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(({ user, styles, displayRole }) => (
-  <View style={styles.headerSection}>
-    <View style={styles.avatarContainer}>
-      <LinearGradient colors={["#49A760", "#3d8b4f"]} style={styles.avatarGradient}>
-        <Text style={styles.avatarText}>
-          {user.displayName ? user.displayName[0]?.toUpperCase() : user.username[0]?.toUpperCase()}
-        </Text>
-      </LinearGradient>
+function ProfileHeaderInner({ user, styles, displayRole }: ProfileHeaderProps) {
+  return (
+    <View style={styles.headerSection}>
+      <View style={styles.avatarContainer}>
+        <LinearGradient colors={["#49A760", "#3d8b4f"]} style={styles.avatarGradient}>
+          <Text style={styles.avatarText}>
+            {user.displayName ? user.displayName[0]?.toUpperCase() : user.username[0]?.toUpperCase()}
+          </Text>
+        </LinearGradient>
+      </View>
+      <Text style={styles.userName}>{user.displayName || user.username}</Text>
+      <Text style={styles.userRole}>{displayRole ?? user.role ?? "User"}</Text>
     </View>
-    <Text style={styles.userName}>{user.displayName || user.username}</Text>
-    <Text style={styles.userRole}>{displayRole ?? user.role ?? "User"}</Text>
-  </View>
-));
+  );
+}
+const ProfileHeader = React.memo(ProfileHeaderInner as React.FC<ProfileHeaderProps>);
 
-const ProfileField: React.FC<ProfileFieldProps> = React.memo(({ field, styles }) => {
-  // Import t inside the component if needed, or pass it as a prop
+function ProfileFieldInner({ field, styles }: ProfileFieldProps) {
   return (
     <View style={styles.fieldRow}>
       <View style={styles.fieldIcon}><Text style={styles.iconText}>{field.icon}</Text></View>
@@ -133,20 +136,24 @@ const ProfileField: React.FC<ProfileFieldProps> = React.memo(({ field, styles })
       </View>
     </View>
   );
-});
+}
+const ProfileField = React.memo(ProfileFieldInner as React.FC<ProfileFieldProps>);
 
-const PreferenceField: React.FC<PreferenceFieldProps> = React.memo(({ field, styles }) => (
-  <TouchableOpacity style={styles.fieldRow} onPress={field.onPress} disabled={!field.editable}>
-    <View style={styles.fieldIcon}><Text style={styles.iconText}>{field.icon}</Text></View>
-    <View style={styles.fieldContent}>
-      <Text style={styles.fieldLabel}>{field.label}</Text>
-      <Text style={styles.fieldValue}>{field.value || "Not set"}</Text>
-    </View>
-    {field.editable && <Ionicons name="chevron-forward" size={20} color="#49A760" />}
-  </TouchableOpacity>
-));
+function PreferenceFieldInner({ field, styles }: PreferenceFieldProps) {
+  return (
+    <TouchableOpacity style={styles.fieldRow} onPress={field.onPress} disabled={!field.editable}>
+      <View style={styles.fieldIcon}><Text style={styles.iconText}>{field.icon}</Text></View>
+      <View style={styles.fieldContent}>
+        <Text style={styles.fieldLabel}>{field.label}</Text>
+        <Text style={styles.fieldValue}>{field.value || "Not set"}</Text>
+      </View>
+      {field.editable && <Ionicons name="chevron-forward" size={20} color="#49A760" />}
+    </TouchableOpacity>
+  );
+}
+const PreferenceField = React.memo(PreferenceFieldInner as React.FC<PreferenceFieldProps>);
 
-const SelectionModal: React.FC<SelectionModalProps> = React.memo(({
+function SelectionModalInner({
   visible,
   onClose,
   title,
@@ -154,51 +161,54 @@ const SelectionModal: React.FC<SelectionModalProps> = React.memo(({
   selectedValue,
   onSelect,
   styles
-}) => (
-  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{title}</Text>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={styles.modalScroll}>
-          {options.map((option: any) => {
-            const optionValue = option.id || option.code || option.name;
-            const optionName = option.name;
-            const optionIcon = option.icon || option.flag;
-            const optionDesc = option.description;
-            const isSelected = selectedValue === optionName || selectedValue === optionValue;
+}: SelectionModalProps) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalScroll}>
+            {options.map((option: any) => {
+              const optionValue = option.id || option.code || option.name;
+              const optionName = option.name;
+              const optionIcon = option.icon || option.flag;
+              const optionDesc = option.description;
+              const isSelected = selectedValue === optionName || selectedValue === optionValue;
 
-            return (
-              <TouchableOpacity
-                key={optionValue}
-                style={[styles.modalOption, isSelected && styles.modalOptionSelected]}
-                onPress={() => {
-                  onSelect(optionValue);
-                  onClose();
-                }}
-              >
-                <Text style={styles.modalOptionIcon}>{optionIcon}</Text>
-                <View style={styles.modalOptionContent}>
-                  <Text style={[styles.modalOptionText, isSelected && styles.modalOptionTextSelected]}>
-                    {optionName}
-                  </Text>
-                  {optionDesc && (
-                    <Text style={styles.modalOptionDesc}>{optionDesc}</Text>
-                  )}
-                </View>
-                {isSelected && <Ionicons name="checkmark-circle" size={24} color="#49A760" />}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+              return (
+                <TouchableOpacity
+                  key={optionValue}
+                  style={[styles.modalOption, isSelected && styles.modalOptionSelected]}
+                  onPress={() => {
+                    onSelect(optionValue);
+                    onClose();
+                  }}
+                >
+                  <Text style={styles.modalOptionIcon}>{optionIcon}</Text>
+                  <View style={styles.modalOptionContent}>
+                    <Text style={[styles.modalOptionText, isSelected && styles.modalOptionTextSelected]}>
+                      {optionName}
+                    </Text>
+                    {optionDesc && (
+                      <Text style={styles.modalOptionDesc}>{optionDesc}</Text>
+                    )}
+                  </View>
+                  {isSelected && <Ionicons name="checkmark-circle" size={24} color="#49A760" />}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       </View>
-    </View>
-  </Modal>
-));
+    </Modal>
+  );
+}
+const SelectionModal = React.memo(SelectionModalInner as React.FC<SelectionModalProps>);
 
 
 
@@ -301,7 +311,7 @@ const Profile = () => {
 
   // Get current language display name
   const currentLanguageName = useMemo(() => {
-    const lang = LANGUAGES.find(l => l.code === language);
+    const lang = LANGUAGES.find((l: { code: string; name: string }) => l.code === language);
     return lang ? lang.name : "English";
   }, [language]);
 

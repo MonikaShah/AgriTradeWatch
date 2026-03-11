@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -331,6 +332,18 @@ const Home: React.FC = React.memo(() => {
                 ? (t.home.welcome?.replace("{{username}}", mainUser.username) ?? `Welcome, ${mainUser.username}`)
                 : (t.home.welcomeGuest ?? "Welcome")}
             </Text>
+            {(() => {
+              const userWithContact = mainUser as { email?: string; mobile?: string } | null;
+              const email = userWithContact?.email?.trim();
+              const mobile = userWithContact?.mobile?.trim();
+              if (!email && !mobile) return null;
+              return (
+                <View style={styles.userContact}>
+                  {email ? <Text style={styles.userContactText} numberOfLines={1}>{email}</Text> : null}
+                  {mobile ? <Text style={styles.userContactText} numberOfLines={1}>{mobile}</Text> : null}
+                </View>
+              );
+            })()}
           </View>
 
           {/* Features */}
@@ -366,6 +379,19 @@ const Home: React.FC = React.memo(() => {
               ))}
             </View>
           </View> */}
+
+          {/* Contact footer */}
+          <View style={styles.homeFooter}>
+            <Text style={styles.homeFooterText}>
+              {t.home.contactUs ?? "Contact us: "}
+            </Text>
+            <TouchableOpacity
+              onPress={() => Linking.openURL("mailto:info@mandigo.in")}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.homeFooterLink}>info@mandigo.in</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </LinearGradient>
     </SafeAreaView>

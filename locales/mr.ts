@@ -143,6 +143,8 @@ export const mr: TranslationKeys = {
     // Quick Actions
     viewRecentPrices: "अलीकडील किंमती पहा",
     findNearbyMarkets: "जवळच्या बाजारपेठा शोधा",
+
+    contactUs: "आमच्याशी संपर्क साधा: ",
   },
 
   // Map Screen

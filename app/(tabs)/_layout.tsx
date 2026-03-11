@@ -17,13 +17,13 @@ const TabIcon: React.FC<TabIconProps> = ({ icon, color, name, focused }) => {
       style={{
         alignItems: "center",
         justifyContent: "center",
-        height: 50,
-        paddingVertical: 5,
+        height: 44,
+        paddingVertical: 2,
       } as ViewStyle}
     >
       <Ionicons
         name={icon as any}
-        size={focused ? 28 : 24}
+        size={focused ? 22 : 20}
         color={color}
         style={{ fontWeight: "bold" } as TextStyle}
       />
@@ -31,7 +31,7 @@ const TabIcon: React.FC<TabIconProps> = ({ icon, color, name, focused }) => {
         style={{
           fontSize: 10,
           color,
-          marginTop: 4,
+          marginTop: 2,
           fontWeight: focused ? "600" : "400",
         }}
       >
@@ -58,15 +58,15 @@ const TabLayout: React.FC = () => {
         tabBarActiveTintColor: "#49A760",
         tabBarInactiveTintColor: "#BDBDBD",
         tabBarStyle: {
-          height: 80,
-          paddingBottom: 10,
-          paddingTop: 10,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 6,
           backgroundColor: "#FFFFFF",
           borderTopWidth: 1,
           borderTopColor: "#E5E5E5",
         },
         tabBarItemStyle: {
-          height: 60,
+          height: 48,
           justifyContent: "center",
           alignItems: "center",
         },

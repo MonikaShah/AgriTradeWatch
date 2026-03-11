@@ -102,9 +102,11 @@ class ProfileService {
             const profileData = response.data;
             console.log("🔍 Raw Profile Data from API:", JSON.stringify(profileData, null, 2));
 
+            const displayEmail = this.getDisplayEmail(profileData as ProfileData & Record<string, unknown>);
             const enhancedProfile: EnhancedProfileData = {
                 ...profileData,
                 password: undefined, // Remove password from the response
+                email: displayEmail,
                 displayName: this.getDisplayName(profileData),
                 role: this.getUserRole(profileData),
                 isVerified: profileData.is_active && !!profileData.email,
@@ -161,9 +163,11 @@ class ProfileService {
 
             // Enhance the updated profile data
             const profileData = response.data;
+            const displayEmail = this.getDisplayEmail(profileData as ProfileData & Record<string, unknown>);
             const enhancedProfile: EnhancedProfileData = {
                 ...profileData,
                 password: undefined,
+                email: displayEmail,
                 displayName: this.getDisplayName(profileData),
                 role: this.getUserRole(profileData),
                 isVerified: profileData.is_active && !!profileData.email,
@@ -220,6 +224,19 @@ class ProfileService {
             return profile.job.charAt(0).toUpperCase() + profile.job.slice(1);
         }
         return "User";
+    }
+
+    /**
+     * Resolve display email from API. Some backends put username in email or use nested user.email.
+     * Only treat as email if it looks like one (contains @); otherwise avoid showing username as email.
+     */
+    private getDisplayEmail(profile: ProfileData & Record<string, unknown>): string {
+        const raw = profile.email ?? (profile.user as { email?: string } | undefined)?.email ?? "";
+        const s = typeof raw === "string" ? raw.trim() : "";
+        if (!s) return "";
+        if (s.includes("@")) return s;
+        if (s === profile.username) return "";
+        return s;
     }
 
     /**
