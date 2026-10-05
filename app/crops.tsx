@@ -224,35 +224,41 @@ useEffect(() => {
   }, [form.name]);
 
   const handlePickImage = useCallback(async () => {
-    if (!hasPermission) {
-      Alert.alert(
-        t.common.required,
-        "Please grant camera and media library access in your device settings."
-      );
-      return;
-    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          t.common.required,
+          "Please grant media library access in your device settings."
+        );
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8, // Reduce quality for better performance
-      aspect: [1, 1], // Square aspect ratio
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const fileName =
-        asset.fileName || generateImageFileName(form.name || "unknown");
-      const mimeType = asset.mimeType || getMimeType(asset.uri);
-
-      setPhoto({
-        uri: asset.uri,
-        base64: "", // No base64 from gallery picker
-        fileName,
-        type: mimeType,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        quality: 0.8,
+        aspect: [1, 1],
       });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const fileName =
+          asset.fileName || generateImageFileName(form.name || "unknown");
+        const mimeType = asset.mimeType || getMimeType(asset.uri);
+
+        setPhoto({
+          uri: asset.uri,
+          base64: asset.base64 ?? "",
+          fileName,
+          type: mimeType,
+        });
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert(t.common.error || "Error", "Failed to pick image");
     }
-  }, [hasPermission, form.name, t]);
+  }, [form.name, t]);
 
   const handleCropSubmit = useCallback(async () => {
     if (!isLogged) {
@@ -578,6 +584,15 @@ useEffect(() => {
                       >
                         <Ionicons name="camera" size={24} color="#49A760" />
                         <Text style={styles.imageButtonText}>{t.crops.takePhoto}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.imageButton}
+                        onPress={handlePickImage}
+                        accessible={true}
+                        accessibilityLabel="Choose photo from gallery"
+                      >
+                        <Ionicons name="images" size={24} color="#49A760" />
+                        <Text style={styles.imageButtonText}>{t.crops.fromGallery}</Text>
                       </TouchableOpacity>
                     </View>
                     {photo && (

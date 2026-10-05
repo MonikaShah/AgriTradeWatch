@@ -48,6 +48,12 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow MandiGo to access your photos so you can upload crop images from the gallery."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
