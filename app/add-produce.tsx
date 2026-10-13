@@ -1,4 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+// import {
+//   View,
+//   Text,
+//   ScrollView,
+//   Image,
+//   Alert,
+//   TouchableOpacity,
+//   Linking,
+//   StyleSheet,
+//   BackHandler,
+//   Platform,
+// } from "react-native";
 import {
   View,
   Text,
@@ -6,7 +18,6 @@ import {
   Image,
   Alert,
   TouchableOpacity,
-  Linking,
   StyleSheet,
   BackHandler,
   Platform,
@@ -387,9 +398,12 @@ const AddProduce: React.FC = () => {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [photo, setPhoto] = useState<PhotoState | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [locationConfirmed, setLocationConfirmed] = useState(false);
+  // const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [markerPosition, setMarkerPosition] = useState<{latitude: number; longitude: number} | null>(null);
+  // const cameraRef = useRef<CameraView>(null);
   const cameraRef = useRef<CameraView>(null);
+  const mapRef = useRef<WebView>(null);
+  const mapLoadedRef = useRef(false);
 
   // Voice recording states
   const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
@@ -519,100 +533,328 @@ const AddProduce: React.FC = () => {
   }, []);
 
   // Generate map HTML
-  const mapHtml = useMemo(() => {
-    if (!markerPosition) return "";
-
-    const { latitude, longitude } = markerPosition;
-
-    return `
+    // Generate the map only once so dragging the marker does not reload it.
+  const mapHtml = useMemo(
+    () => `
       <!DOCTYPE html>
       <html>
         <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+          />
+
+          <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          />
+
           <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
           <style>
-            body { margin: 0; }
-            #map { height: 100vh; width: 100vw; }
+            html, body, #map {
+              margin: 0;
+              padding: 0;
+              width: 100%;
+              height: 100%;
+            }
+
             .location-marker {
               background: transparent !important;
               border: none !important;
-              z-index: 1000 !important;
             }
           </style>
         </head>
+
         <body>
           <div id="map"></div>
+
           <script>
+            // Maharashtra is the temporary starting point.
+            // The app moves the marker to the device location when available.
             var map = L.map('map', {
               zoomControl: true
-            }).setView([${latitude}, ${longitude}], 15);
+            }).setView([19.7515, 75.7139], 7);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-              maxZoom: 20,
-              attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+            L.tileLayer(
+              'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+              {
+                maxZoom: 20,
+                attribution: '&copy; OpenStreetMap contributors'
+              }
+            ).addTo(map);
 
-            var locationMarker = L.marker([${latitude}, ${longitude}], {
-              draggable: true,
-              icon: L.divIcon({
-                className: 'location-marker',
-                html: '<div style="position: relative; width: 30px; height: 30px;"><div style="background: #9C27B0; width: 24px; height: 24px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.6); position: absolute; top: 0; left: 3px;"></div><div style="background: white; width: 8px; height: 8px; border-radius: 50%; position: absolute; top: 5px; left: 11px; z-index: 1;"></div></div>',
-                iconSize: [30, 30],
-                iconAnchor: [15, 30]
-              })
-            }).addTo(map);
+            var locationMarker = L.marker(
+              [19.7515, 75.7139],
+              {
+                draggable: true,
+                icon: L.divIcon({
+                  className: 'location-marker',
+                  html:
+                    '<div style="position:relative;width:30px;height:30px;">' +
+                      '<div style="' +
+                        'background:#9C27B0;' +
+                        'width:24px;height:24px;' +
+                        'border-radius:50% 50% 50% 0;' +
+                        'transform:rotate(-45deg);' +
+                        'border:3px solid white;' +
+                        'box-shadow:0 3px 8px rgba(0,0,0,0.6);' +
+                        'position:absolute;top:0;left:3px;' +
+                      '"></div>' +
+                      '<div style="' +
+                        'background:white;' +
+                        'width:8px;height:8px;' +
+                        'border-radius:50%;' +
+                        'position:absolute;top:5px;left:11px;' +
+                      '"></div>' +
+                    '</div>',
+                  iconSize: [30, 30],
+                  iconAnchor: [15, 30]
+                })
+              }
+            ).addTo(map);
 
-            locationMarker.bindPopup('<div style="font-family: Arial, sans-serif; text-align: center;"><strong>📍 Your Location</strong><br><small>Drag to adjust</small></div>');
+            locationMarker.bindPopup(
+              '<strong>Selected Location</strong><br>' +
+              '<small>Drag the marker to change the location.</small>'
+            );
 
-            locationMarker.on('dragend', function(event) {
+            // Called by React Native when GPS or an administrative
+            // area provides a new location.
+            window.updateSelectedLocation = function(lat, lng, zoom) {
+              lat = Number(lat);
+              lng = Number(lng);
+
+              if (
+                !Number.isFinite(lat) ||
+                !Number.isFinite(lng) ||
+                lat < -90 ||
+                lat > 90 ||
+                lng < -180 ||
+                lng > 180
+              ) {
+                return;
+              }
+
+              locationMarker.setLatLng([lat, lng]);
+
+              if (zoom) {
+                map.setView([lat, lng], 15);
+              }
+            };
+
+            // Report the selected location after the farmer releases
+            // the draggable marker.
+            locationMarker.on('dragend', function() {
               var position = locationMarker.getLatLng();
-              locationMarker.bindPopup('<div style="font-family: Arial, sans-serif; text-align: center;"><strong>📍 Location Updated</strong><br><small>Lat: ' + position.lat.toFixed(4) + '</small><br><small>Lng: ' + position.lng.toFixed(4) + '</small></div>').openPopup();
 
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'markerMoved',
-                latitude: position.lat,
-                longitude: position.lng
-              }));
+              locationMarker.bindPopup(
+                '<strong>Selected Location</strong><br>' +
+                '<small>Lat: ' + position.lat.toFixed(6) + '</small><br>' +
+                '<small>Lng: ' + position.lng.toFixed(6) + '</small>'
+              ).openPopup();
+
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({
+                  type: 'markerMoved',
+                  latitude: position.lat,
+                  longitude: position.lng
+                })
+              );
             });
           </script>
         </body>
       </html>
-    `;
-  }, [markerPosition]);
+    `,
+    []
+  );
 
-  // Handle messages from WebView
+  // Update the existing map without reloading its HTML.
+  const updateMapMarker = useCallback(
+    (latitude: number, longitude: number) => {
+      if (!mapLoadedRef.current || !mapRef.current) {
+        return;
+      }
+
+      const lat = JSON.stringify(latitude);
+      const lng = JSON.stringify(longitude);
+
+      mapRef.current.injectJavaScript(`
+        if (window.updateSelectedLocation) {
+          window.updateSelectedLocation(${lat}, ${lng}, true);
+        }
+        true;
+      `);
+    },
+    []
+  );
+
+  // Initialize the marker from the device's current location.
+  useEffect(() => {
+    if (
+      currentLocation &&
+      Number.isFinite(currentLocation.latitude) &&
+      Number.isFinite(currentLocation.longitude) &&
+      !markerPosition
+    ) {
+      setMarkerPosition({
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+      });
+    }
+  }, [currentLocation, markerPosition]);
+
+  // Keep the native selected coordinates and map marker synchronized.
+  useEffect(() => {
+    if (markerPosition) {
+      updateMapMarker(
+        markerPosition.latitude,
+        markerPosition.longitude
+      );
+    }
+  }, [markerPosition, updateMapMarker]);
+
+  // Receive coordinates when the farmer drags the marker.
   const handleWebViewMessage = useCallback((event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === "markerMoved") {
+
+      if (
+        data.type === "markerMoved" &&
+        Number.isFinite(data.latitude) &&
+        Number.isFinite(data.longitude)
+      ) {
         setMarkerPosition({
           latitude: data.latitude,
           longitude: data.longitude,
         });
-        setLocationConfirmed(false); // Reset confirmation when marker moves
       }
     } catch (error) {
-      console.error("Error parsing WebView message:", error);
+      console.error("Error parsing map message:", error);
     }
   }, []);
 
-  const handleConfirmLocation = useCallback(() => {
+  // Mark the map as ready and apply the latest selected coordinates.
+  const handleMapLoadEnd = useCallback(() => {
+    mapLoadedRef.current = true;
+
     if (markerPosition) {
-      setLocationConfirmed(true);
-      Alert.alert(
-        t.common.success || "Success",
-        "Location confirmed successfully!",
-        [{ text: t.common.ok || "OK" }]
-      );
-    } else {
-      Alert.alert(
-        t.common.error || "Error",
-        "Please select a location on the map",
-        [{ text: t.common.ok || "OK" }]
+      updateMapMarker(
+        markerPosition.latitude,
+        markerPosition.longitude
       );
     }
-  }, [markerPosition, t]);
+  }, [markerPosition, updateMapMarker]);
+
+    // Move the marker to the approximate centre of the selected
+  // state, district, or tehsil.
+  useEffect(() => {
+    if (!formData.state) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const locateAdministrativeArea = async () => {
+      try {
+        let latitude: number;
+        let longitude: number;
+
+        // Maharashtra's approximate centre.
+        if (!formData.district) {
+          latitude = 19.7515;
+          longitude = 75.7139;
+        } else {
+          const area = formData.tehsil
+            ? `${formData.tehsil}, ${formData.district}`
+            : formData.district;
+
+          const query = `${area}, ${formData.state}, India`;
+
+          const url =
+            "https://nominatim.openstreetmap.org/search" +
+            `?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
+
+          const response = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `Location search failed: HTTP ${response.status}`
+            );
+          }
+
+          const results = await response.json();
+
+          if (!Array.isArray(results) || results.length === 0) {
+            console.warn("No map location found for:", query);
+            return;
+          }
+
+          latitude = Number(results[0].lat);
+          longitude = Number(results[0].lon);
+
+          if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude)
+          ) {
+            return;
+          }
+        }
+
+        if (!cancelled) {
+          setMarkerPosition({ latitude, longitude });
+        }
+      } catch (error) {
+        console.warn(
+          "Could not locate the selected administrative area:",
+          error
+        );
+      }
+    };
+
+    void locateAdministrativeArea();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.state, formData.district, formData.tehsil]);
+
+  // Handle messages from WebView
+  // const handleWebViewMessage = useCallback((event: any) => {
+  //   try {
+  //     const data = JSON.parse(event.nativeEvent.data);
+  //     if (data.type === "markerMoved") {
+  //       setMarkerPosition({
+  //         latitude: data.latitude,
+  //         longitude: data.longitude,
+  //       });
+  //       //setLocationConfirmed(false); // Reset confirmation when marker moves
+  //     }
+  //   } catch (error) {
+  //     console.error("Error parsing WebView message:", error);
+  //   }
+  // }, []);
+
+  // const handleConfirmLocation = useCallback(() => {
+  //   if (markerPosition) {
+  //     setLocationConfirmed(true);
+  //     Alert.alert(
+  //       t.common.success || "Success",
+  //       "Location confirmed successfully!",
+  //       [{ text: t.common.ok || "OK" }]
+  //     );
+  //   } else {
+  //     Alert.alert(
+  //       t.common.error || "Error",
+  //       "Please select a location on the map",
+  //       [{ text: t.common.ok || "OK" }]
+  //     );
+  //   }
+  // }, [markerPosition, t]);
 
   const validateForm = useCallback((): boolean => {
     if (
@@ -774,35 +1016,54 @@ const AddProduce: React.FC = () => {
 
     if (!validateForm()) return;
 
-    if (!currentLocation) {
+    // if (!currentLocation) {
+    //   Alert.alert(
+    //     t.auth.locationRequired,
+    //     t.crops.locationRequiredMessage || "Location is required to add produce",
+    //     [
+    //       { text: "Open Settings", onPress: () => Linking.openSettings() },
+    //       { text: t.common.cancel, style: "cancel" },
+    //     ]
+    //   );
+    //   return;
+    // }
+    const selectedLocation = markerPosition || (
+      currentLocation
+        ? {
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+          }
+        : null
+    );
+
+    if (!selectedLocation) {
       Alert.alert(
         t.auth.locationRequired,
-        t.crops.locationRequiredMessage || "Location is required to add produce",
-        [
-          { text: "Open Settings", onPress: () => Linking.openSettings() },
-          { text: t.common.cancel, style: "cancel" },
-        ]
+        t.crops.locationRequiredMessage || "Please wait for your current location or enable location access."
       );
       return;
     }
 
     // If photo is attached, location must be confirmed
-    if (photo && !locationConfirmed) {
-      Alert.alert(
-        "Location Required",
-        "Please confirm your location on the map before uploading a photo.",
-        [{ text: t.common.ok || "OK" }]
-      );
-      return;
-    }
+    // if (photo && !locationConfirmed) {
+    //   Alert.alert(
+    //     "Location Required",
+    //     "Please confirm your location on the map before uploading a photo.",
+    //     [{ text: t.common.ok || "OK" }]
+    //   );
+    //   return;//
+    // }
 
     setIsLoading(true);
 
     try {
       // Use confirmed location or current location
       // Round to 6 decimal places (approx 0.11m precision) to avoid "too many digits" error
-      const finalLatitude = parseFloat((markerPosition?.latitude || currentLocation.latitude).toFixed(6));
-      const finalLongitude = parseFloat((markerPosition?.longitude || currentLocation.longitude).toFixed(6));
+      // const finalLatitude = parseFloat((markerPosition?.latitude || currentLocation.latitude).toFixed(6));
+      // const finalLongitude = parseFloat((markerPosition?.longitude || currentLocation.longitude).toFixed(6));
+
+      const finalLatitude = parseFloat(selectedLocation.latitude.toFixed(6));
+      const finalLongitude = parseFloat(selectedLocation.longitude.toFixed(6));
 
       const payload: any = {
         sale_commodity: formData.sale_commodity || "",
@@ -818,7 +1079,8 @@ const AddProduce: React.FC = () => {
         profit_expectation: 0,
         latitude: finalLatitude,
         longitude: finalLongitude,
-        location_confirmed: locationConfirmed,
+        // location_confirmed: locationConfirmed,
+        location_confirmed: true,
         state: formData.state || "",
         district: formData.district || "",
         tehsil: formData.tehsil || "",
@@ -886,7 +1148,7 @@ const AddProduce: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [formData, currentLocation, isLogged, setIsLoading, photo, voiceFile, t, navigation, markerPosition, locationConfirmed, validateForm]);
+  }, [formData, currentLocation, isLogged, setIsLoading, photo, voiceFile, t, navigation, markerPosition, validateForm]);
 
   if (isCameraOpen) {
     return (
@@ -1150,36 +1412,39 @@ const AddProduce: React.FC = () => {
                 <Text style={styles.inputLabel}>
                   Drag the marker OR choose district and Tehsil to change the location
                 </Text>
-                {currentLocation && markerPosition && (
+                {/* //{currentLocation && markerPosition && ( */}
+                {markerPosition && (
                   <>
                     <View style={styles.mapContainer}>
-                      <WebView
-                        originWhitelist={["*"]}
-                        source={{ html: mapHtml }}
-                        style={{ flex: 1 }}
-                        onMessage={handleWebViewMessage}
-                        javaScriptEnabled={true}
-                        domStorageEnabled={true}
-                        startInLoadingState={true}
-                      />
+                     <WebView
+                      ref={mapRef}
+                      originWhitelist={["*"]}
+                      source={{ html: mapHtml }}
+                      style={{ flex: 1 }}
+                      onMessage={handleWebViewMessage}
+                      onLoadEnd={handleMapLoadEnd}
+                      javaScriptEnabled={true}
+                      domStorageEnabled={true}
+                      startInLoadingState={true}
+                    />
                     </View>
-                    <TouchableOpacity
-                      style={styles.confirmLocationButton}
-                      onPress={handleConfirmLocation}
-                    >
-                      <LinearGradient
-                        colors={["#4caf50", "#388e3c"]}
-                        style={styles.confirmLocationGradient}
+                      {/* <TouchableOpacity
+                        style={styles.confirmLocationButton}
+                        onPress={handleConfirmLocation}
                       >
-                        <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                        <Text style={styles.confirmLocationText}>Confirm Location</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                    {locationConfirmed && (
+                        <LinearGradient
+                          colors={["#4caf50", "#388e3c"]}
+                          style={styles.confirmLocationGradient}
+                        >
+                          <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                          <Text style={styles.confirmLocationText}>Confirm Location</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                      {locationConfirmed && (
                       <Text style={styles.locationConfirmedText}>
                         ✓ Location confirmed
                       </Text>
-                    )}
+                    )}   */}
                   </>
                 )}
               </View>

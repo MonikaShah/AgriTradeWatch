@@ -67,6 +67,9 @@ export const en = {
     userTypeFarmerDesc: "Grow and sell crops",
     userTypeConsumer: "Consumer",
     userTypeConsumerDesc: "Buy for personal use",
+    userTypeRetailer: "Retailer",
+    userTypeRetailerDesc: "Small scale business",
+    selectYourRole: "Select Your Role",
 
     // Location
     locationRequired: "Location access required",

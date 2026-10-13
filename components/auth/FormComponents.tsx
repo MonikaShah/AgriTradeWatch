@@ -139,7 +139,8 @@ export const SelectionModal: React.FC<SelectionModalProps> = ({
           bounces={false}
         >
           {options.map((option) => {
-            const isSelected = selectedValue === option.name;
+            const optionId = String(option.id);
+            const isSelected = selectedValue === optionId;
             return (
               <TouchableOpacity
                 key={option.id}
@@ -148,7 +149,7 @@ export const SelectionModal: React.FC<SelectionModalProps> = ({
                   isSelected && styles.selectedModalItem,
                 ]}
                 onPress={() => {
-                  onSelect(option.name);
+                  onSelect(optionId);
                   onClose();
                 }}
                 activeOpacity={0.7}

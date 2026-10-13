@@ -202,7 +202,8 @@ const DamageCrop: React.FC = () => {
       return;
     }
 
-    // Only allow farmer user type to report damage
+    // Only allow farmer 
+    //  to report damage
     if (userRole !== 'farmer') {
       Alert.alert(
         t.common.error || "Error",

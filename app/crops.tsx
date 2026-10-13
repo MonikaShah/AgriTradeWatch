@@ -224,41 +224,41 @@ useEffect(() => {
   }, [form.name]);
 
   const handlePickImage = useCallback(async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          t.common.required,
-          "Please grant media library access in your device settings."
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        quality: 0.8,
-        aspect: [1, 1],
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        const fileName =
-          asset.fileName || generateImageFileName(form.name || "unknown");
-        const mimeType = asset.mimeType || getMimeType(asset.uri);
-
-        setPhoto({
-          uri: asset.uri,
-          base64: asset.base64 ?? "",
-          fileName,
-          type: mimeType,
-        });
-      }
-    } catch (error) {
-      console.error("Error picking image:", error);
-      Alert.alert(t.common.error || "Error", "Failed to pick image");
+  try {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        t.common.required,
+        "Please grant media library access in your device settings."
+      );
+      return;
     }
-  }, [form.name, t]);
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.8,
+      aspect: [1, 1],
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      const fileName =
+        asset.fileName || generateImageFileName(form.name || "unknown");
+      const mimeType = asset.mimeType || getMimeType(asset.uri);
+
+      setPhoto({
+        uri: asset.uri,
+        base64: asset.base64 ?? "",
+        fileName,
+        type: mimeType,
+      });
+    }
+  } catch (error) {
+    console.error("Error picking image:", error);
+    Alert.alert(t.common.error || "Error", "Failed to pick image");
+  }
+}, [form.name, t]);
 
   const handleCropSubmit = useCallback(async () => {
     if (!isLogged) {
@@ -603,23 +603,7 @@ useEffect(() => {
                           accessible={true}
                           accessibilityLabel="Selected crop image preview"
                         />
-                        <TouchableOpacity
-                          style={styles.removeImageButton}
-                          onPress={() => setPhoto(null)}
-                          accessible={true}
-                          accessibilityLabel="Remove selected image"
-                        >
-                          <Ionicons
-                            name="close-circle"
-                            size={24}
-                            color="#ff6b6b"
-                          />
-                        </TouchableOpacity>
-                        <View style={styles.imageInfo}>
-                          <Text style={styles.imageInfoText}>
-                            {t.crops.photoAttached.replace('{{fileName}}', photo.fileName || "Image selected")}
-                          </Text>
-                        </View>
+                        ...
                       </View>
                     )}
                   </View>

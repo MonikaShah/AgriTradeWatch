@@ -1,6 +1,6 @@
 
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ import authService, { RegistrationData } from "@/services/auth-service";
 import * as Location from "expo-location";
 import { APIError } from "@/services/api";
 import { FormInput, SelectionButton, SelectionModal } from "@/components/auth/FormComponents";
-import { USER_TYPES } from "@/constants/authConstants";
 import GlobalLoader from "@/components/Loader";
 import illustration from "@/assets/images/workers-farm-activity-illustration 2.png";
 
@@ -40,6 +39,7 @@ interface SignUpFormState {
 }
 
 type ModalType = 'userType' | null;
+type UserJob = 'farmer' | 'consumer' | 'retailer';
 
 
 const SignUp = () => {
@@ -57,7 +57,19 @@ const SignUp = () => {
 
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [modalVisible, setModalVisible] = useState<ModalType>(null);
-  const [selectedUserType, setSelectedUserType] = useState<'Farmer' | 'Consumer' | 'Retailer'>('Farmer');
+  const [selectedUserType, setSelectedUserType] = useState<UserJob>('farmer');
+
+  const userTypeOptions = useMemo(
+    () => [
+      { id: 'farmer', name: t.auth.userTypeFarmer, icon: '🌾', description: t.auth.userTypeFarmerDesc },
+      { id: 'consumer', name: t.auth.userTypeConsumer, icon: '🛒', description: t.auth.userTypeConsumerDesc },
+      { id: 'retailer', name: t.auth.userTypeRetailer, icon: '🏪', description: t.auth.userTypeRetailerDesc },
+    ],
+    [t]
+  );
+
+  const selectedUserTypeLabel =
+    userTypeOptions.find((type) => type.id === selectedUserType)?.name ?? t.auth.userTypeFarmer;
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [isRequestingLocation, setIsRequestingLocation] = useState<boolean>(true); // Start as true to show waiting state
 
@@ -123,7 +135,7 @@ const SignUp = () => {
       return;
     }
 
-    const job = selectedUserType.toLowerCase() as 'farmer' | 'consumer' | 'retailer';
+    const job = selectedUserType;
 
     setIsRegistering(true);
     setIsLoading(true);
@@ -242,8 +254,8 @@ const SignUp = () => {
 
             <SelectionButton
               label={t.auth.iAmA}
-              value={selectedUserType}
-              icon={USER_TYPES.find(type => type.name === selectedUserType)?.icon || "👤"}
+              value={selectedUserTypeLabel}
+              icon={userTypeOptions.find((type) => type.id === selectedUserType)?.icon || "👤"}
               onPress={() => setModalVisible('userType')}
             />
 
@@ -366,10 +378,10 @@ const SignUp = () => {
       <SelectionModal
         visible={modalVisible === 'userType' && !isRegistering}
         onClose={() => setModalVisible(null)}
-        title="Select Your Role"
-        options={USER_TYPES}
+        title={t.auth.selectYourRole}
+        options={userTypeOptions}
         selectedValue={selectedUserType}
-        onSelect={(value: string) => setSelectedUserType(value as 'Farmer' | 'Consumer' | 'Retailer')}
+        onSelect={(value: string) => setSelectedUserType(value as UserJob)}
       />
 
       <GlobalLoader

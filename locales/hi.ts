@@ -69,6 +69,9 @@ export const hi: TranslationKeys = {
     userTypeFarmerDesc: "फसल उगाएं और बेचें",
     userTypeConsumer: "उपभोक्ता",
     userTypeConsumerDesc: "व्यक्तिगत उपयोग के लिए खरीदें",
+    userTypeRetailer: "फुटकर विक्रेता",
+    userTypeRetailerDesc: "छोटे पैमाने का व्यवसाय",
+    selectYourRole: "अपनी भूमिका चुनें",
 
     // Location
     locationRequired: "स्थान की पहुंच आवश्यक है",
